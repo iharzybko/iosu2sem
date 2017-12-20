@@ -42,6 +42,8 @@ create or replace package body MY_package is
 
 	procedure equip(kind in varchar2) is 
 	wrong_kind exception;
+	v_name equipment.name%type;
+	v_found char(1) := 'y';
 	amount_det lots.numb_of%type;
 	cursor str is
 		select * from equipment 
@@ -53,30 +55,34 @@ create or replace package body MY_package is
 		where tk.tno in (select tno from tk join equipment on tk.eno=equipment.eno 
 		where equipment.name = 'Станок сверлильный')
 		group by tk.eno;
-	cursor del is
-	select * from equipment2;	
-	
-	del1 del%rowtype;
+
  begin
   open str;
   open kol;
-  open del;
-  fetch del into del1;
-  if del%FOUND then 
-  delete from equipment2;
-  	end if;
   fetch str into tabl;
-	if str%notfound then 
-		raise wrong_kind;
-	else 
-	 fetch kol into amount_det;
-		while str%found
-			loop 
-	insert into equipment2 values (equipment_seq.nextval, tabl.name,tabl.mark,tabl.manuf_country,tabl.quantity,tabl.price,amount_det);
-	fetch str into tabl;
-	fetch kol into amount_det;
-			end loop;
-	end if;
+  if str%notfound then raise wrong_kind;
+  end if;
+
+  while str%found
+  loop 
+
+	  begin
+	  	select name into v_name from equipment2
+	  	where name = tabl.name and mark = tabl.mark;
+
+	  	exception
+	  		when no_data_found then
+	  		v_found := 'n'; 
+	  end; 
+
+	  if v_found = 'n' then
+			fetch kol into amount_det;	
+			insert into equipment2 values (equipment_seq.nextval, tabl.name,tabl.mark,tabl.manuf_country,tabl.quantity,tabl.price,amount_det);
+		end if;
+
+		fetch str into tabl;
+		fetch kol into amount_det;
+  end loop;
   close str;
   close kol;
 
@@ -129,27 +135,66 @@ end MY_package;
 
 --Создание анонимного блока:
 
+SET SERVEROUTPUT ON
 declare
   count_brig number := 0;
-begin
+  begin
     MY_package.equip('Станок сверлильный');
-    MY_package.equip('Станок руковыпрямительный');
+    MY_package.equip('Станок олег');
 
-
-    count_brig:=MY_package.amount_workers(2);
+	count_brig := amount_workers('Нечай');
 	dbms_output.put_line('Количество человек в бригаде: '||count_brig);
 end;
 /
 
--- Создание локальной программы:
 
-/*function amount_workers(FIO_brig in varchar2) 
-return number;
+-- Создание локальной перегруженной программы:
+
+declare
+	count_brig number := 0;
+
+function amount_workers(id_brig in number) 
+return number 
+is 
+result number;
+	wrong_id exception;
+	cursor brig is
+	select numb_of from brigades where bno=id_brig;
+	
+	procedure edit_amount_brigades(id_edit in number) is
+		begin 
+		update brigades set numb_of=10 where bno=id_edit;
+		end edit_amount_brigades;
+begin 
+	open brig;
+	fetch brig into result;
+	if brig%notfound then 
+		raise wrong_id;
+	else 
+		if result <= 8 then 
+			edit_amount_brigades(id_brig);
+			result :=10;
+			commit;
+		end if;
+	return result;
+	end if;
+	close brig;
+	
+	exception 
+  when wrong_id then 
+  dbms_output.put_line('Такой бригады нет');
+  when others then
+    raise_application_error(-20002, 'An error was encountered - '||SQLCODE||' -ERROR- '||SQLERRM);
+end amount_workers;
+
+
+function amount_workers(fname in varchar2) 
+return number
 is
 result number;
 	wrong_id exception;
 	cursor brig is
-	select amount from brigades where brigadier=FIO_brig;
+	select numb_of from brigades where brig_surname=fname;
 begin 
 	open brig;
 	fetch brig into result;
@@ -157,7 +202,7 @@ begin
 		raise wrong_id;
 	else
 		if result <= 8 then 
-			update brigades set amount=10 where brigadier=FIO_brig;
+			update brigades set numb_of = 10 where brig_surname=fname;
 			result := 10;
 			commit;
 		end if;
@@ -171,67 +216,12 @@ begin
   when others then
     raise_application_error(-20002, 'An error was encountered - '||SQLCODE||' -ERROR- '||SQLERRM);
 end amount_workers;
+
+begin
+  count_brig := amount_workers(2);
+	dbms_output.put_line('Количество человек в бригаде: '||count_brig);
+	count_brig := amount_workers('Нечай');
+	dbms_output.put_line('Количество человек в бригаде: '||count_brig);
+end;
 /
-*/
-
--- Создание перегруженной программы:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---Вызов
-SET SERVEROUTPUT ON
-DECLARE
-count_a NUMBER;
-BEGIN
-count_a:=MY_package.amount_workers(1);
-dbms_output.put_line(count_a);
-END;
- /
- ALTER TABLE brigades ADD amount NUMBER;
- update brigades set amount=8 WHERE bk=4;
-SET SERVEROUTPUT ON
-DECLARE
-count_a NUMBER;
-BEGIN
-count_a:=MY_package.amount_workers('Бобров Виктор Михайлович');
-dbms_output.put_line(count_a);
-END;
- /
 
