@@ -142,11 +142,13 @@ declare
     MY_package.equip('Станок сверлильный');
     MY_package.equip('Станок олег');
 
-	count_brig := amount_workers('Нечай');
+	count_brig := MY_package.amount_workers(3);
 	dbms_output.put_line('Количество человек в бригаде: '||count_brig);
 end;
 /
 
+
+/*предустановленные ошибки и локальная программа*/
 
 -- Создание локальной перегруженной программы:
 
