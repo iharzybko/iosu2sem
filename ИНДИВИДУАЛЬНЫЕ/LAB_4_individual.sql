@@ -140,6 +140,7 @@ declare
   count_brig number := 0;
   begin
     MY_package.equip('Станок сверлильный');
+    MY_package.equip('Станок фрезерный'); 
     MY_package.equip('Станок олег');
 
 	count_brig := MY_package.amount_workers(3);
